@@ -1,0 +1,142 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Creates multiple packaged components and deploys the packages to a given environment&#xd;
+If the package with the same version exists, a new package is not created. If the package is deployed, the deployment step is ignored. &#xd;
+Optionally store the package components in GIT and run SonarQube static code analysis on the package.&#xd;
+The latest version of the component is packaged. Use Create Package or Deploy Package to create/deploy different component version.&#xd;
+&#xd;
+source bin/deployPackages.sh</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>env</name>
+          <description>Name of the Environment</description>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>componentIds</name>
+          <description>Comma separate list of component IDs to be packaged and deployed if this value is null component names will be used instead</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>processNames</name>
+          <description>Comma separate list of component names to be packaged and deployed</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>packageVersion</name>
+          <description>Version of the Package to be created</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>notes</name>
+          <description>Notes </description>
+          <defaultValue>This package is ...</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>componentType</name>
+          <description>Default component type of these components. If using mixed component types. Keep this blank.</description>
+          <defaultValue>process</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>listenerStatus</name>
+          <description>Default listenerStatus</description>
+          <defaultValue>RUNNING</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>extractComponentXmlFolder</name>
+          <description>If this value is set the component XMLs with the package will be extracted. This may take up to 2 minutes to extract all components of the package</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>tag</name>
+          <description>If this value is set the component XML will be stored in GIT. In the ${gitRepoURL} configured.</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>GIT_COMMIT</name>
+          <description>This value is passed in from Dynamic Job Builder and if present will update GIT with the status of the job</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>cd ${SCRIPTS_HOME}
+saveNotes=&quot;Triggered by jenkins user ${BUILD_USER_ID} ... ${notes}&quot;
+source ./bin/deployPackages.sh notes=&quot;${saveNotes}&quot;
+echo &quot;Deployment Id is $deploymentId&quot;</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <org.jenkinsci.plugins.postbuildscript.PostBuildScript plugin="postbuildscript@2.11.0">
+      <config>
+        <scriptFiles>
+          <org.jenkinsci.plugins.postbuildscript.model.ScriptFile>
+            <results>
+              <string>SUCCESS</string>
+            </results>
+            <role>BOTH</role>
+            <executeOn>BOTH</executeOn>
+            <filePath>${SCRIPTS_HOME}/bin/postBuildUpdateGit.sh GIT_API_URL=${gitReleaseRepoAPIURL} GIT_AUTH=${GIT_AUTH} GIT_COMMIT=${GIT_COMMIT} JENKINS_CALLBACK_URL=${JOB_URL}/${BUILD_NUMBER}/console JOB_BASE_NAME=Deploy_Packages STATE=success</filePath>
+            <scriptType>GENERIC</scriptType>
+            <sandboxed>false</sandboxed>
+          </org.jenkinsci.plugins.postbuildscript.model.ScriptFile>
+          <org.jenkinsci.plugins.postbuildscript.model.ScriptFile>
+            <results>
+              <string>ABORTED</string>
+              <string>FAILURE</string>
+            </results>
+            <role>BOTH</role>
+            <executeOn>BOTH</executeOn>
+            <filePath>${SCRIPTS_HOME}/bin/postBuildUpdateGit.sh GIT_API_URL=${gitReleaseRepoAPIURL} GIT_AUTH=${GIT_AUTH} GIT_COMMIT=${GIT_COMMIT} JENKINS_CALLBACK_URL=${JOB_URL}/${BUILD_NUMBER}/console JOB_BASE_NAME=Deploy_Packages STATE=failure</filePath>
+            <scriptType>GENERIC</scriptType>
+            <sandboxed>false</sandboxed>
+          </org.jenkinsci.plugins.postbuildscript.model.ScriptFile>
+        </scriptFiles>
+        <groovyScripts/>
+        <buildSteps/>
+        <markBuildUnstable>false</markBuildUnstable>
+      </config>
+    </org.jenkinsci.plugins.postbuildscript.PostBuildScript>
+  </publishers>
+  <buildWrappers>
+    <org.jenkinsci.plugins.credentialsbinding.impl.SecretBuildWrapper plugin="credentials-binding@1.24">
+      <bindings>
+        <org.jenkinsci.plugins.credentialsbinding.impl.StringBinding>
+          <credentialsId>authToken</credentialsId>
+          <variable>authToken</variable>
+        </org.jenkinsci.plugins.credentialsbinding.impl.StringBinding>
+        <org.jenkinsci.plugins.credentialsbinding.impl.StringBinding>
+          <credentialsId>gitComponentRepoURL</credentialsId>
+          <variable>gitComponentRepoURL</variable>
+        </org.jenkinsci.plugins.credentialsbinding.impl.StringBinding>
+        <org.jenkinsci.plugins.credentialsbinding.impl.StringBinding>
+          <credentialsId>sonarToken</credentialsId>
+          <variable>sonarToken</variable>
+        </org.jenkinsci.plugins.credentialsbinding.impl.StringBinding>
+        <org.jenkinsci.plugins.credentialsbinding.impl.UsernamePasswordBinding>
+          <credentialsId>gitReleaseRepoAPIToken</credentialsId>
+          <variable>GIT_AUTH</variable>
+        </org.jenkinsci.plugins.credentialsbinding.impl.UsernamePasswordBinding>
+      </bindings>
+    </org.jenkinsci.plugins.credentialsbinding.impl.SecretBuildWrapper>
+    <com.mig82.folders.wrappers.ParentFolderBuildWrapper plugin="folder-properties@1.2.1"/>
+    <org.jenkinsci.plugins.builduser.BuildUser plugin="build-user-vars-plugin@1.7"/>
+  </buildWrappers>
+</project>
